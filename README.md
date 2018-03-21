@@ -1,2 +1,2 @@
-# Ub
-My project and algorithm at University at Buffalo
+# Ub #
+# My project and algorithm at University at Buffalo #
