@@ -22,13 +22,15 @@ test_priority_donate_lower (void)
 
   /* Make sure our priority is the default. */
   ASSERT (thread_get_priority () == PRI_DEFAULT);
-
+  
   lock_init (&lock);
   lock_acquire (&lock);
   thread_create ("acquire", PRI_DEFAULT + 10, acquire_thread_func, &lock);
+ 
   msg ("Main thread should have priority %d.  Actual priority: %d.",
        PRI_DEFAULT + 10, thread_get_priority ());
 
+  
   msg ("Lowering base priority...");
   thread_set_priority (PRI_DEFAULT - 10);
   msg ("Main thread should have priority %d.  Actual priority: %d.",
@@ -43,7 +45,8 @@ static void
 acquire_thread_func (void *lock_) 
 {
   struct lock *lock = lock_;
-
+  //printf("%s:%d\n",thread_current()->name,thread_current()->priority);
+  
   lock_acquire (lock);
   msg ("acquire: got the lock");
   lock_release (lock);

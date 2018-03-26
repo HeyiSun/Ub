@@ -20,6 +20,10 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+/////
+static struct list w_list;
+
+
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -35,6 +39,7 @@ static void real_time_delay (int64_t num, int32_t denom);
 void
 timer_init (void) 
 {
+  list_init(&w_list);
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
@@ -91,9 +96,24 @@ timer_sleep (int64_t ticks)
 {
   int64_t start = timer_ticks ();
 
+  if(ticks<=0)
+    return;
   ASSERT (intr_get_level () == INTR_ON);
+  enum intr_level old_level = intr_disable();
+    struct thread* cur=thread_current();
+    //printf("%p\n",cur);
+    //printf("ticks=%d, tid=%d,w_ticks=%lld\n",ticks, cur->tid,cur->w_ticks);
+    cur->w_ticks=ticks;
+    //printf("ticks=%d, tid=%d,w_ticks=%lld\n",ticks, cur->tid,cur->w_ticks);
+    list_push_back (&w_list, &(cur->elem));
+    thread_block();
+  intr_set_level (old_level);
+
+
+/*
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
+*/
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -165,12 +185,57 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
+
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  
+  enum intr_level old_level = intr_disable();
+  /////
+  
+  if(thread_mlfqs){
+    thread_increase_recent();
+    if(ticks%TIMER_FREQ==0)
+      thread_load_recent_update();
+    else if(ticks%4==0)
+      thread_mlfqs_priority(thread_current());
+   
+  }
+  /*if (thread_mlfqs)
+  {
+    thread_mlfqs_increase_recent_cpu_by_one ();
+    if (ticks % TIMER_FREQ == 0)
+      thread_mlfqs_update_load_avg_and_recent_cpu ();
+    else if (ticks % 4 == 0)
+      thread_mlfqs_update_priority (thread_current ());
+}*/
+  
+   
+  struct list_elem *e;
+  
+  if(!list_empty (&w_list))
+  for (e=list_begin(&w_list);e!=list_end(&w_list);e=list_next(e))
+  {
+    struct thread *tmp=list_entry (e, struct thread, elem);
+    tmp->w_ticks--;
+    //printf("ticks=%d, tid=%d,w_ticks=%lld\n",ticks, tmp->tid,tmp->w_ticks);
+    if(tmp->w_ticks==0)
+    {
+      struct elem* pp=e->prev;
+      //printf("%p",tmp);
+      list_remove(e);
+      e=pp;
+      thread_unblock(tmp);
+      //break;
+      //printf("unblock!\n");
+      //;
+    }
+  }
+  intr_set_level (old_level);
   thread_tick ();
 }
 

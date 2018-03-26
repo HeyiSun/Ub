@@ -38,6 +38,7 @@ test_priority_donate_one (void)
   msg ("This thread should have priority %d.  Actual priority: %d.",
        PRI_DEFAULT + 2, thread_get_priority ());
   lock_release (&lock);
+  //printf("%d\n",thread_current()->priority);
   msg ("acquire2, acquire1 must already have finished, in that order.");
   msg ("This should be the last line before finishing this test.");
 }
@@ -45,8 +46,8 @@ test_priority_donate_one (void)
 static void
 acquire1_thread_func (void *lock_) 
 {
+  //printf("ENTER acquire 1\n");
   struct lock *lock = lock_;
-
   lock_acquire (lock);
   msg ("acquire1: got the lock");
   lock_release (lock);
@@ -56,10 +57,11 @@ acquire1_thread_func (void *lock_)
 static void
 acquire2_thread_func (void *lock_) 
 {
+  //printf("ENTER acquire 2\n");
   struct lock *lock = lock_;
-
   lock_acquire (lock);
   msg ("acquire2: got the lock");
+  //printf("%c\n",lock->holder->name[0]);
   lock_release (lock);
   msg ("acquire2: done");
 }

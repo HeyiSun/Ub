@@ -4,6 +4,8 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "float.h"
+
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -89,7 +91,15 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-
+  ////////////////////////////////////  
+    int64_t w_ticks;
+    int real_Pri;
+    int nice;
+    float_32 recent;
+    //float_32 recent;
+    struct list donation;
+    struct lock* waiting;
+  ///////////////////////////////////  
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -105,6 +115,13 @@ struct thread
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
+   
+struct dona{
+  int priority;
+  struct thread* dona_thread;
+  struct lock* dona_lock;
+  struct list_elem elema;
+};
 extern bool thread_mlfqs;
 
 void thread_init (void);
@@ -115,6 +132,10 @@ void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
+
+////////////////////////////////////////My modification
+bool pri_cmp(const struct list_elem *a,const struct list_elem *b,void *aux);
+bool dona_cmp(const struct list_elem *a,const struct list_elem *b,void *aux);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
@@ -137,5 +158,10 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+void dona_init (struct dona* tmp, struct thread* a,struct lock* b, int c);
+void thread_increase_recent(void);
+void thread_load_recent_update(void);
+void thread_mlfqs_priority(struct thread *thread);
+
 
 #endif /* threads/thread.h */
